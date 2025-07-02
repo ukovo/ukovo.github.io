@@ -3,7 +3,7 @@ const API_DOMAINS = [
   'https://pigeonpig.github.io',
   'https://flow-l95ei0m8.maozi.io',
 ];
-const CACHE_NAME = 'swMain-cache-v1';
+const CACHE_NAME = 'swMain-cache-v2';
 self.addEventListener('install', e => {
   self.skipWaiting();
   e.waitUntil(caches.open(CACHE_NAME));
@@ -11,11 +11,13 @@ self.addEventListener('install', e => {
 self.addEventListener('activate', e => {
   e.waitUntil(self.clients.claim());
 });
+// Proxy all GET requests within scope through the fastest API domain.
 self.addEventListener('fetch', e => {
+  if (e.request.method !== 'GET') return;
   const url = new URL(e.request.url);
-  if (url.pathname === '/api/wx') {
-    e.respondWith(fetchWithCache(e.request));
-  }
+  // Skip the worker script itself
+  if (url.pathname.endsWith('/sw.js')) return;
+  e.respondWith(fetchWithCache(e.request));
 });
 async function fetchWithCache(request) {
   const cache = await caches.open(CACHE_NAME);
@@ -33,7 +35,13 @@ async function fetchWithCache(request) {
 }
 function fetchFastest(request) {
   const url = new URL(request.url);
-  const path = url.pathname + url.search;
+  let path = url.pathname;
+  if (path === '/' || path === '/swMain/') {
+    path = '/index.html';
+  } else if (path.startsWith('/swMain/')) {
+    path = path.slice('/swMain'.length);
+  }
+  path += url.search;
   const controllers = API_DOMAINS.map(() => new AbortController());
   let finished = false;
   return new Promise((resolve, reject) => {
@@ -47,7 +55,9 @@ function fetchFastest(request) {
             resolve(res);
           } else {
             count++;
-            if (count === API_DOMAINS.length && !finished) reject(new Error('all failed'));
+            if (count === API_DOMAINS.length && !finished) {
+              reject(new Error('all failed'));
+            }
           }
         })
         .catch(err => {
