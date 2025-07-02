@@ -6,40 +6,64 @@ const API_DOMAINS = [
   'https://wxpig.netlify.app',
 ];
 const CACHE_NAME = 'swMain-cache-v2';
+const CACHE_DOMAINS = [
+  'https://images.weserv.nl',
+  'https://cdn.tailwindcss.com'
+];
+
 self.addEventListener('install', e => {
   self.skipWaiting();
   e.waitUntil(caches.open(CACHE_NAME));
 });
+
 self.addEventListener('activate', e => {
   e.waitUntil(self.clients.claim());
 });
-// Proxy all GET requests within scope through the fastest API domain.
+
 self.addEventListener('fetch', e => {
   if (e.request.method !== 'GET') return;
   const url = new URL(e.request.url);
-  // Allow external requests to pass through untouched
-  if (url.origin !== location.origin) {
-    e.respondWith(fetch(e.request));
-    return;
-  }
+  
   // Skip the worker script itself
   if (url.pathname.endsWith('/sw.js')) return;
-  e.respondWith(fetchWithCache(e.request));
+  
+  // Handle both same-origin and specific external requests with caching
+  if (url.origin === location.origin || CACHE_DOMAINS.includes(url.origin)) {
+    e.respondWith(fetchWithCache(e.request));
+  } else {
+    // For other external requests, just fetch without caching
+    e.respondWith(fetch(e.request));
+  }
 });
+
 async function fetchWithCache(request) {
   const cache = await caches.open(CACHE_NAME);
   const cached = await cache.match(request);
+  
+  // Return cached response if available
   if (cached) return cached;
+  
   try {
-    const res = await fetchFastest(request);
-    if (res.ok) {
-      cache.put(request, res.clone());
+    let response;
+    const url = new URL(request.url);
+    
+    // Use fastest fetch for same-origin requests, normal fetch for external
+    if (url.origin === location.origin) {
+      response = await fetchFastest(request);
+    } else {
+      response = await fetch(request);
     }
-    return res;
+    
+    // Cache successful responses
+    if (response.ok) {
+      cache.put(request, response.clone());
+    }
+    return response;
   } catch (err) {
     return cached || new Response('fetch error', { status: 502 });
   }
 }
+
 function fetchFastest(request) {
   const url = new URL(request.url);
   let path = url.pathname;
@@ -47,8 +71,10 @@ function fetchFastest(request) {
     path = '/index.html';
   } 
   path += url.search;
+  
   const controllers = API_DOMAINS.map(() => new AbortController());
   let finished = false;
+  
   return new Promise((resolve, reject) => {
     let count = 0;
     API_DOMAINS.forEach((d, i) => {
