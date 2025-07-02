@@ -43,11 +43,9 @@ async function fetchWithCache(request) {
 function fetchFastest(request) {
   const url = new URL(request.url);
   let path = url.pathname;
-  if (path === '/' || path === '/swMain/') {
+  if (path === '/') {
     path = '/index.html';
-  } else if (path.startsWith('/swMain/')) {
-    path = path.slice('/swMain'.length);
-  }
+  } 
   path += url.search;
   const controllers = API_DOMAINS.map(() => new AbortController());
   let finished = false;
