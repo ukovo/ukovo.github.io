@@ -3,7 +3,7 @@ const API_DOMAINS = [
   'https://flow-l95ei0m8.maozi.io',
   'https://wx-api-deno.onmicrosoft.cn',
   'https://art.valetzx.ip-ddns.com',
-  'http://wxpig.netlify.app',
+  'https://wxpig.netlify.app',
 ];
 const CACHE_NAME = 'swMain-cache-v2';
 self.addEventListener('install', e => {
