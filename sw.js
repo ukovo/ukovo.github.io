@@ -15,6 +15,11 @@ self.addEventListener('activate', e => {
 self.addEventListener('fetch', e => {
   if (e.request.method !== 'GET') return;
   const url = new URL(e.request.url);
+  // Allow external requests to pass through untouched
+  if (url.origin !== location.origin) {
+    e.respondWith(fetch(e.request));
+    return;
+  }
   // Skip the worker script itself
   if (url.pathname.endsWith('/sw.js')) return;
   e.respondWith(fetchWithCache(e.request));

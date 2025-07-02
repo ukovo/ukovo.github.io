@@ -10,7 +10,7 @@
 <script>
 if ('serviceWorker' in navigator) {
   navigator.serviceWorker.register('./sw.js', { scope: './' }).then(() => {
-    return fetch('./api/wx');
+    return fetch('./');
   }).then(r => r.json()).then(d => {
     document.getElementById('output').textContent = JSON.stringify(d, null, 2);
   }).catch(err => {
